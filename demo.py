@@ -66,7 +66,6 @@ def display_dataset_menu(DATASET):
             'Actions',
             '[1] - Scroll through Dataset Images',
             '[2] - Display Stitching Result',
-            '[3] - Pool',
             '',
             'ESC - Go Back to Main Menu'
             ]
@@ -136,4 +135,5 @@ def main():
     elif key == ord("3"):
         DATASET = "HEY"
 
-main()
+if __name__ == "__main__":
+    main()
