@@ -110,8 +110,7 @@ def drawMatches(imageA, imageB, kpsA, kpsB, matches, status):
 
 
 def main():
-    # We can use the ArgParser module to make it super fancy
-    DATASET = 'mountains'
+    DATASET = 'mountains2'
 
     dataset = []
     if DATASET == 'sign':
@@ -119,25 +118,23 @@ def main():
     elif DATASET == 'pool':
         dataset = [cv2.imread(f"panos/Pool/pool{idx}.jpg") for idx in range(3)]
     elif DATASET == 'mountains':
-        dataset = [cv2.imread(f"panos/Mountains/mountains{idx}.jpg") for idx in range(5)]
+        dataset = [cv2.imread(
+            f"panos/Mountains/mountains{idx}.jpg") for idx in range(5)]
+    elif DATASET == 'mountains2':
+        dataset = [cv2.imread(
+            f"panos/Mountains2/mountains2_{idx}.jpg") for idx in range(4)]
     else:
         print("DATASET must be 'sign' or 'pool' or 'mountains'")
         sys.exit(0)
 
-    # numImages = len(dataset)
+    # stitched = dataset[-1]
+    # for image in dataset[-1::-1]:
+    #     stitched = stitch([image, stitched])
 
-    # result = stitch([dataset[0], dataset[1]])
-    # result = stitch([result, dataset[2]])
-    # result = stitch([result, dataset[3]])
-    # result = stitch([dataset[2], dataset[3]])
-    result = dataset[4]
-    result = stitch([dataset[3], result])
-    result = stitch([dataset[2], result])
-    result = stitch([dataset[1], result])
-    result = stitch([dataset[0], result])
-    stitched = result
+    stitched = dataset[0]
+    for image in dataset[1:]:
+        stitched = stitch([stitched, image])
 
-    
     # resultLeft = stitch([dataset[0], dataset[1]])#, showMatches="Keypoint matches left")
     # cv2.imshow("Result left", resultLeft)
 
@@ -174,7 +171,7 @@ def main():
     # cv2.imshow("Keypoint Matches", vis)
     cv2.imshow("Result", stitched)
     cv2.waitKey(0)
-    # cv2.imwrite("output.jpg", stitched)
+    cv2.imwrite("output.jpg", stitched)
 
 
 if __name__ == "__main__":
