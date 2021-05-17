@@ -8,7 +8,7 @@
 # Resources:
 # * Using ORB to find key points:
 # * https://medium.com/analytics-vidhya/panorama-formation-using-image-stitching-using-opencv-1068a0e8e47b
-# 
+#
 # * Stitching together multiple images without common key points:
 # * https://towardsdatascience.com/image-panorama-stitching-with-opencv-2402bde6b46c
 #
@@ -24,7 +24,7 @@ import cv2
 from typing import Tuple, Union
 
 
-def stitch(images, ratio=0.95, reprojThresh=4.0, showMatches=False) -> Union[None, np.array, Tuple[np.array, np.array]]:
+def stitch(images, ratio=0.95, reprojThresh=4.0, showMatches=None) -> Union[None, np.array, Tuple[np.array, np.array]]:
     # local invariant descriptors from them
     (imageB, imageA) = images
     (kpsA, featuresA) = detectAndDescribe(imageA)
@@ -42,10 +42,10 @@ def stitch(images, ratio=0.95, reprojThresh=4.0, showMatches=False) -> Union[Non
     result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
 
     # check to see if the keypoint matches should be visualized
-    if showMatches:
+    if showMatches is not None:
         vis = drawMatches(imageA, imageB, kpsA, kpsB, matches, status)
         # return a tuple of the stitched image and the visualization
-        return (result, vis)
+        cv2.imshow(showMatches, vis)
 
     # return the stitched image
     return result
@@ -56,6 +56,7 @@ def detectAndDescribe(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # detect keypoints in the image
     orb = cv2.ORB_create()
+
     kps, features = orb.detectAndCompute(image, None)
     # convert the keypoints from KeyPoint objects to NumPy arrays
     kps = np.float32([kp.pt for kp in kps])
@@ -102,7 +103,7 @@ def drawMatches(imageA, imageB, kpsA, kpsB, matches, status):
             # draw the match
             ptA = (int(kpsA[queryIdx][0]), int(kpsA[queryIdx][1]))
             ptB = (int(kpsB[trainIdx][0]) + wA, int(kpsB[trainIdx][1]))
-            cv2.line(vis, ptA, ptB, (0, 255, 0), 1)
+            cv2.line(vis, ptA, ptB, (255, 0, 0), 3)
 
     # return the visualization
     return vis
@@ -110,36 +111,67 @@ def drawMatches(imageA, imageB, kpsA, kpsB, matches, status):
 
 def main():
     # We can use the ArgParser module to make it super fancy
-    DATASET = 'pool'
+    DATASET = 'mountains'
 
+    dataset = []
     if DATASET == 'sign':
-        mid = cv2.imread("panos/sign_mid.jpg")
-        left = cv2.imread("panos/sign_left.jpg")
-        right = cv2.imread("panos/sign_right.jpg")
+        dataset = [cv2.imread(f"panos/Sign/sign{idx}.jpg") for idx in range(3)]
     elif DATASET == 'pool':
-        mid = cv2.imread("panos/pool_mid.jpg")
-        left = cv2.imread("panos/pool_left.jpg")
-        right = cv2.imread("panos/pool_right.jpg")
+        dataset = [cv2.imread(f"panos/Pool/pool{idx}.jpg") for idx in range(3)]
+    elif DATASET == 'mountains':
+        dataset = [cv2.imread(f"panos/Mountains/mountains{idx}.jpg") for idx in range(5)]
     else:
-        print("DATASET must be 'sign' or 'pool'")
+        print("DATASET must be 'sign' or 'pool' or 'mountains'")
         sys.exit(0)
+
+    # numImages = len(dataset)
+
+    # result = stitch([dataset[0], dataset[1]])
+    # result = stitch([result, dataset[2]])
+    # result = stitch([result, dataset[3]])
+    # result = stitch([dataset[2], dataset[3]])
+    result = dataset[4]
+    result = stitch([dataset[3], result])
+    result = stitch([dataset[2], result])
+    result = stitch([dataset[1], result])
+    result = stitch([dataset[0], result])
+    stitched = result
+
+    
+    # resultLeft = stitch([dataset[0], dataset[1]])#, showMatches="Keypoint matches left")
+    # cv2.imshow("Result left", resultLeft)
+
+    # resultRight = stitch([dataset[3], dataset[4]])#, showMatches="Keypoint matches right")
+    # cv2.imshow("Result right", resultRight)
+
+    # resultRightCenter = stitch([dataset[2], resultRight])#, showMatches="Keypoint matches right-center")
+    # cv2.imshow("Result right-center", resultRightCenter)
+
+    # result = stitch([resultLeft, resultRightCenter], showMatches="Keypoint matches left-center")
+    # cv2.imshow("Result", result)
+
+    # stitched = result
+
+    # ((1  2)   3   (4   5))
+    #  len 6
+    # mid 3
 
     # stitch the images together to create a panorama
-    result = stitch([mid, right], showMatches=True)
-    if result is None:
-        print("Failed to stitch first two")
-        sys.exit(0)
+    # left, mid, right, *_ = dataset
+    # result = stitch([mid, right], showMatches=True)
+    # if result is None:
+    #     print("Failed to stitch first two")
+    #     sys.exit(0)
 
-    stitched, vis = result
+    # stitched, vis = result
 
-    result = stitch([left, stitched], showMatches=True)
-    if result is None:
-        print("Failed to stitch last two")
-        sys.exit(0)
+    # result = stitch([left, stitched], showMatches=True)
+    # if result is None:
+    #     print("Failed to stitch last two")
+    #     sys.exit(0)
+    # stitched, vis = result
 
-    stitched, vis = result
-
-    cv2.imshow("Keypoint Matches", vis)
+    # cv2.imshow("Keypoint Matches", vis)
     cv2.imshow("Result", stitched)
     cv2.waitKey(0)
     # cv2.imwrite("output.jpg", stitched)
