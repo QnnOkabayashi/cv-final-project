@@ -1,16 +1,29 @@
-# This file finds the key frames in a panoramic video to make a panorama
+##############################################################################
+#
+# File: video_slicer.py
+# Authors: Quinn Okabayashi, Theron Mansilla
+# Course: ENGR 27
+# Date: May 17 2021
+#
+# Resources:
+# * Getting video frames into a numpy array:
+# * https://stackoverflow.com/a/42166299/12401179
+#
+##############################################################################
+#
+# This file provides utilities to find the key frames in a panoramic video
+# that will stitch together nicely into a panorama
+#
+##############################################################################
 
 import cv2
 import numpy as np
 import sys
-from stitcher import detectAndDescribe
 from typing import Union
-
-# This function converts a .mp4 video file into a 4D numpy array of RGB images
-# Credits:
-# https://stackoverflow.com/a/42166299/12401179
+from stitcher import detect_and_describe
 
 
+# Returns the frames in a .mp4 file as a numpy array
 def get_frames(filename: str) -> np.array:
     cap = cv2.VideoCapture(filename)
 
@@ -24,7 +37,7 @@ def get_frames(filename: str) -> np.array:
     fc = 0
     ret = True
 
-    while (fc < frame_count and ret):
+    while fc < frame_count and ret:
         ret, buf[fc] = cap.read()
         fc += 1
 
@@ -35,10 +48,11 @@ def get_frames(filename: str) -> np.array:
 
 # This function returns how far across the screen objects are translated between two images
 # Returns a number between 0 and 1
-def get_translation_ratio(first, test, ratio: float = 0.95) -> Union[None, float]:
+def get_translation_ratio(first: np.array, test: np.array, ratio: float = 0.95) -> Union[None, float]:
     # local invariant descriptors from them
-    (kpsA, featuresA) = detectAndDescribe(first)
-    (kpsB, featuresB) = detectAndDescribe(test)
+
+    kpsA, featuresA = detect_and_describe(first)
+    kpsB, featuresB = detect_and_describe(test)
     # match features between the two images
     # compute the raw matches and initialize the list of actual matches
     matcher = cv2.DescriptorMatcher_create("BruteForce")
@@ -73,15 +87,14 @@ def get_translation_ratio(first, test, ratio: float = 0.95) -> Union[None, float
 # It first finds the frame interval for finding the first two frames that will stitch together nicely,
 # and then uses the same frame interval between each successive image
 # This means that the video must pan at a relatively constant speed, or quality will decline
-def get_key_frames(filename: str, start: int = 20, count: int = 5, debug: bool = False) -> Union[None, np.array]:
+def get_key_frames(filename: str, start: int = 20, count: int = 5, target: float = .5, debug: bool = False) -> Union[None, np.array]:
     frames = get_frames(filename)
     frame_count, height, width = frames.shape[:3]
 
     # find number of frames to get good panning distance
     # Assume for now that there are enough frames in the video
     first_frame = frames[start]
-    TOL = .1
-    TARGET = .5
+    TOLERANCE = .1
     interval = 20
     delta = 10
     i = 0
@@ -93,9 +106,9 @@ def get_key_frames(filename: str, start: int = 20, count: int = 5, debug: bool =
             interval -= delta
             continue
 
-        if translation_ratio > TARGET + TOL:
+        if translation_ratio > target + TOLERANCE:
             interval -= delta
-        elif translation_ratio < TARGET - TOL:
+        elif translation_ratio < target - TOLERANCE:
             interval += delta
         else:
             if debug:
@@ -119,13 +132,13 @@ def get_key_frames(filename: str, start: int = 20, count: int = 5, debug: bool =
 def main():
     import glob
     import os
-    # if len(sys.argv) != 2:
-    #     print(f"usage: python {sys.argv[0]} dataset")
-    #     print(f"Example: if the dataset is `videos/mountains2.mp4`, do: python {sys.argv[0]} mountains2")
-    #     sys.exit(1)
+    if len(sys.argv) != 2:
+        print(f"usage: python {sys.argv[0]} dataset")
+        print(
+            f"Example: if the dataset is `videos/mountains2.mp4`, do: python {sys.argv[0]} mountains2")
+        sys.exit(1)
 
-    # dataset_name = sys.argv[1]
-    dataset_name = 'mountains2'
+    dataset_name = sys.argv[1]
     filename = f'videos/{dataset_name}.mp4'
     print(f"Using dataset '{dataset_name}'")
 
