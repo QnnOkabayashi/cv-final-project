@@ -3,7 +3,7 @@
 # File: stitcher.py
 # Authors: Quinn Okabayashi, Theron Mansilla
 # Course: ENGR 27
-# Date: May 11 2021
+# Date: May 17 2021
 #
 # Resources:
 # * Using ORB to find key points:
@@ -19,18 +19,20 @@
 ##############################################################################
 
 import numpy as np
-import sys
 import cv2
-from typing import Tuple, Union
+from typing import Tuple, Union, List
 
 
 def stitch(images, ratio=0.95, reprojThresh=4.0, showMatches=None) -> Union[None, np.array, Tuple[np.array, np.array]]:
     # local invariant descriptors from them
-    (imageB, imageA) = images
-    (kpsA, featuresA) = detectAndDescribe(imageA)
-    (kpsB, featuresB) = detectAndDescribe(imageB)
+    (imageA, imageB) = images
+    (keypointsA, featuresA) = detect_and_describe(imageA)
+    (keypointsB, featuresB) = detect_and_describe(imageB)
+
     # match features between the two images
-    M = matchKeypoints(kpsA, kpsB, featuresA, featuresB, ratio, reprojThresh)
+    M = match_keypoints(keypointsB, keypointsA, featuresB,
+                        featuresA, ratio, reprojThresh)
+
     # if the match is None, then there aren’t enough matched
     if M is None:
         return None
@@ -38,12 +40,13 @@ def stitch(images, ratio=0.95, reprojThresh=4.0, showMatches=None) -> Union[None
     # otherwise, apply a perspective warp to stitch the images together
     (matches, H, status) = M
     result = cv2.warpPerspective(
-        imageA, H, (imageA.shape[1] + imageB.shape[1], imageA.shape[0]))
-    result[0:imageB.shape[0], 0:imageB.shape[1]] = imageB
+        imageB, H, (imageB.shape[1] + imageA.shape[1], imageB.shape[0]))
+    result[0:imageA.shape[0], 0:imageA.shape[1]] = imageA
 
     # check to see if the keypoint matches should be visualized
     if showMatches is not None:
-        vis = drawMatches(imageA, imageB, kpsA, kpsB, matches, status)
+        vis = draw_matches(imageB, imageA, keypointsB,
+                           keypointsA, matches, status)
         # return a tuple of the stitched image and the visualization
         cv2.imshow(showMatches, vis)
 
@@ -51,7 +54,7 @@ def stitch(images, ratio=0.95, reprojThresh=4.0, showMatches=None) -> Union[None
     return result
 
 
-def detectAndDescribe(image):
+def detect_and_describe(image):
     # convert the image to grayscale
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # detect keypoints in the image
@@ -64,7 +67,7 @@ def detectAndDescribe(image):
     return (kps, features)
 
 
-def matchKeypoints(kpsA, kpsB, featuresA, featuresB, ratio, reprojThresh):
+def match_keypoints(kpsA, kpsB, featuresA, featuresB, ratio, reprojThresh):
     # compute the raw matches and initialize the list of actual matches
     matcher = cv2.DescriptorMatcher_create("BruteForce")
     rawMatches = matcher.knnMatch(featuresA, featuresB, 2)
@@ -89,7 +92,7 @@ def matchKeypoints(kpsA, kpsB, featuresA, featuresB, ratio, reprojThresh):
     return None
 
 
-def drawMatches(imageA, imageB, kpsA, kpsB, matches, status):
+def draw_matches(imageA, imageB, kpsA, kpsB, matches, status):
     # initialize the output visualization image
     (hA, wA) = imageA.shape[:2]
     (hB, wB) = imageB.shape[:2]
@@ -109,70 +112,13 @@ def drawMatches(imageA, imageB, kpsA, kpsB, matches, status):
     return vis
 
 
-def main():
-    DATASET = 'mountains2'
-
-    dataset = []
-    if DATASET == 'sign':
-        dataset = [cv2.imread(f"panos/Sign/sign{idx}.jpg") for idx in range(3)]
-    elif DATASET == 'pool':
-        dataset = [cv2.imread(f"panos/Pool/pool{idx}.jpg") for idx in range(3)]
-    elif DATASET == 'mountains':
-        dataset = [cv2.imread(
-            f"panos/Mountains/mountains{idx}.jpg") for idx in range(5)]
-    elif DATASET == 'mountains2':
-        dataset = [cv2.imread(
-            f"panos/Mountains2/mountains2_{idx}.jpg") for idx in range(4)]
-    else:
-        print("DATASET must be 'sign' or 'pool' or 'mountains'")
-        sys.exit(0)
-
-    # stitched = dataset[-1]
-    # for image in dataset[-1::-1]:
-    #     stitched = stitch([image, stitched])
-
-    stitched = dataset[0]
-    for image in dataset[1:]:
-        stitched = stitch([stitched, image])
-
-    # resultLeft = stitch([dataset[0], dataset[1]])#, showMatches="Keypoint matches left")
-    # cv2.imshow("Result left", resultLeft)
-
-    # resultRight = stitch([dataset[3], dataset[4]])#, showMatches="Keypoint matches right")
-    # cv2.imshow("Result right", resultRight)
-
-    # resultRightCenter = stitch([dataset[2], resultRight])#, showMatches="Keypoint matches right-center")
-    # cv2.imshow("Result right-center", resultRightCenter)
-
-    # result = stitch([resultLeft, resultRightCenter], showMatches="Keypoint matches left-center")
-    # cv2.imshow("Result", result)
-
-    # stitched = result
-
-    # ((1  2)   3   (4   5))
-    #  len 6
-    # mid 3
-
-    # stitch the images together to create a panorama
-    # left, mid, right, *_ = dataset
-    # result = stitch([mid, right], showMatches=True)
-    # if result is None:
-    #     print("Failed to stitch first two")
-    #     sys.exit(0)
-
-    # stitched, vis = result
-
-    # result = stitch([left, stitched], showMatches=True)
-    # if result is None:
-    #     print("Failed to stitch last two")
-    #     sys.exit(0)
-    # stitched, vis = result
-
-    # cv2.imshow("Keypoint Matches", vis)
-    cv2.imshow("Result", stitched)
-    cv2.waitKey(0)
-    cv2.imwrite("output.jpg", stitched)
-
-
-if __name__ == "__main__":
-    main()
+def stitch_many(frames: List[np.array]) -> np.array:
+    # TODO: currently using naïve implementation, make better
+    # ! Matt, please help us ;_;
+    stitched = frames[-1]
+    for image in frames[-1::-1]:
+        stitched = stitch([image, stitched])
+    # stitched = frames[0]
+    # for i, image in enumerate(frames[1:]):
+    #     stitched = stitch([stitched, image], onto='left', showMatches=str(i))
+    return stitched
