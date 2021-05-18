@@ -1,0 +1,54 @@
+######################################################################
+# the current way
+
+curImg = images[0]
+
+
+for each image in 1..n:
+    
+    # NONO: running ORB on a derived image
+    curPoints = findORB(curImg)
+
+    newPoints = findORB(images[i])
+
+    H = findHomography(curPoints, newPoints)
+    
+    # new, derived data
+    curImg = blend(curImg, images[i], H)    
+
+######################################################################
+# the new way
+
+homographies = []
+
+prevPoints = None
+
+for each image in 0..n:
+
+    # ONLY do feature detection on primary data
+    # NEVER on derived data
+    curPoints = findOrb(images[i])
+    
+    if prevPoints is not None:
+
+         H = findHomography(prevPoints,
+                            curPoints)
+
+         homographies.append(H)
+
+    prevPoints = curPoints
+
+# say we had images 0, 1, 2, 3 now homographies is
+# [ H_0_from_1, H_1_from_2, H_2_from_3 ]
+
+H_0_from_2 = H_0_from_1 @ H_1_from_2 # @ is matrix multiplication
+H_0_from_3 = H_0_from_2 @ H_2_from_3 
+
+H_1_from_0 = np.linalg.inv(H_0_from_1)
+H_1_from_3 = H_1_from_2 @ H_2_from_3
+
+
+
+
+
+
