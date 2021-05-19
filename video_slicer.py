@@ -3,7 +3,7 @@
 # File: video_slicer.py
 # Authors: Quinn Okabayashi, Theron Mansilla
 # Course: ENGR 27
-# Date: May 17 2021
+# Date: May 18 2021
 #
 # Resources:
 # * Getting video frames into a numpy array:
@@ -19,11 +19,9 @@
 import cv2
 import numpy as np
 import sys
-from typing import Union
-from stitcher import detect_and_describe
+from typing import Union, Tuple, List
 
 
-# Returns the frames in a .mp4 file as a numpy array
 def get_frames(filename: str) -> np.array:
     cap = cv2.VideoCapture(filename)
 
@@ -44,6 +42,17 @@ def get_frames(filename: str) -> np.array:
     cap.release()
 
     return buf
+
+
+def detect_and_describe(image: np.array) -> Tuple[List[cv2.KeyPoint], np.array]:
+    # convert the image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    orb = cv2.ORB_create()
+
+    kps, features = orb.detectAndCompute(image, None)
+    # convert the keypoints from KeyPoint objects to NumPy arrays
+    kps = np.float32([kp.pt for kp in kps])
+    return kps, features
 
 
 # This function returns how far across the screen objects are translated between two images
@@ -99,7 +108,12 @@ def get_key_frames(filename: str, start: int = 20, count: int = 5, target: float
     delta = 10
     i = 0
     while True:
-        test_frame = frames[start + interval]
+        frame_idx = start + interval
+        if frame_idx >= frame_count:
+            print("Interval got too big")
+            return None
+
+        test_frame = frames[frame_idx]
         translation_ratio = get_translation_ratio(first_frame, test_frame)
         if translation_ratio is None:
             # need to go back more
@@ -125,6 +139,9 @@ def get_key_frames(filename: str, start: int = 20, count: int = 5, target: float
 
     # get frames at that interval
     key_frames = frames[start::interval][:count]
+    if len(key_frames) < count:
+        print(f"Requested {count} key frames, but the video is too short.")
+        print(f"Using {len(key_frames)} key frames")
 
     return key_frames
 
@@ -135,7 +152,7 @@ def main():
     if len(sys.argv) != 2:
         print(f"usage: python {sys.argv[0]} dataset")
         print(
-            f"Example: if the dataset is `videos/mountains2.mp4`, do: python {sys.argv[0]} mountains2")
+            f"Example: if the dataset is `videos/Beach.mp4`, do: python {sys.argv[0]} Beach")
         sys.exit(1)
 
     dataset_name = sys.argv[1]
