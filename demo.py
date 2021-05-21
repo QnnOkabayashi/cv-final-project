@@ -3,15 +3,15 @@
 # File: demo.py
 # Authors: Quinn Okabayashi, Theron Mansilla
 # Course: ENGR 27
-# Date: May 17 2021
+# Date: May 18 2021
 #
 # Resources:
-# * GUI Inspiration:
-#   https://github.com/swatbotics/mnist_pca_knn/blob/main/mnist_pca_knn.py
+# * UI Inspiration:
+# * https://github.com/swatbotics/mnist_pca_knn/blob/main/mnist_pca_knn.py
 #
 ##############################################################################
 #
-# This file provides GUI utilities.
+# This file provides UI utilities.
 #
 ##############################################################################
 
@@ -50,59 +50,14 @@ def show_text_screen(text: List[str]) -> None:
     cv2.imshow(WINDOW_NAME, menu)
 
 
-def get_dataset_menu() -> Tuple[np.array, str]:
-    menuText = [
-        'Panorama Stitching Menu',
-        '',
-        'Datasets',
-        '[1] - Mountains',
-        '[2] - Sign',
-        '[3] - Pool',
-        '[4] - Select Video',
-        '',
-        'ESC - QUIT'
-    ]
-
-    while True:
-        show_text_screen(menuText)
-
-        k = cv2.waitKey(0)
-
-        if k == 27:
-            sys.exit(0)
-
-        elif k == ord("1"):
-            images = [cv2.imread(
-                f"panos/Mountains/mountains{idx}.jpg") for idx in range(5)]
-
-            return images, "MOUNTAINS"
-
-        elif k == ord("2"):
-            images = [cv2.imread(
-                f"panos/Sign/sign_{idx}.jpg") for idx in range(3)]
-
-            return images, "SIGN"
-
-        elif k == ord("3"):
-            images = [cv2.imread(
-                f"panos/Pool/pool_{idx}.jpg") for idx in range(3)]
-
-            return images, "POOL"
-
-        elif k == ord("4"):
-            res = display_custom_video_menu()
-
-            if res is not None:
-                return res
-
-
 def display_dataset_menu(dataset: str) -> None:
     menu_text = [
-        f'{dataset.title()} menu',
+        f'{dataset} menu',
         '',
         'actions',
         '[1] - scroll through dataset images',
         '[2] - display stitching result',
+        '[3] - save stitched result',
         '',
         'esc - go back to main menu'
     ]
@@ -137,37 +92,33 @@ def get_user_choice(header: str, options: List[str], idx: int = 0) -> Union[None
             return idx
 
 
-def display_custom_video_menu() -> Union[None, Tuple[np.array, str]]:
+def select_video_menu() -> Union[None, Tuple[np.array, str]]:
     while True:
         # Select a video
         video_names = [name for name in os.listdir(
-            'videos') if os.path.isfile(os.path.join('videos', name))]
+            'videos') if name.endswith('.mp4')]
         idx = get_user_choice("Video Selection Menu", video_names)
         if idx is None:
             return None
 
-        dataset_name = video_names[idx]
-        filename = os.path.join("videos", f"{dataset_name}")
+        dataset_filename = video_names[idx]
+        dataset_name = dataset_filename[:-4]
+        filename = os.path.join("videos", f"{dataset_filename}")
 
         while True:
             # Select a frame count
-            frame_choices = list(map(str, np.arange(1, 8)))
+            frame_choices = list(map(str, np.arange(1, 11)))
             idx = get_user_choice("Frame Count Menu", frame_choices, 2)
             if idx is None:
                 break
 
             frame_count = int(frame_choices[idx])
 
-            # Select a translation ratio
-            tr_choices = list(map(lambda x: str(x)[:3], np.arange(.1, .9, .1)))
-            idx = get_user_choice("Translation Ratio Selection", tr_choices, 2)
-            if idx is None:
-                continue
-
-            translation_ratio = float(tr_choices[idx])
-
             images = get_key_frames(
-                filename, target=translation_ratio, count=frame_count)
+                filename, target=0.2, count=frame_count)
+            if images is None:
+                return None
+
             return images, dataset_name
 
 
@@ -197,4 +148,3 @@ def dataset_demo(images: np.array) -> None:
             idx = (idx + n - 1) % n
         elif k == 27:
             return
-

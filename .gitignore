@@ -1,4 +1,4 @@
-.DS_Store
+**/.DS_Store
 output.jpg
-*.pyc
-# videos/*
+uncompressed_videos/
+__pycache__/
